@@ -60,7 +60,7 @@ public class SlideMain extends Activity {
         );
         outtoRight.setDuration(500);
         outtoRight.setInterpolator(new AccelerateInterpolator());
-        return outtoR/ight;
+        return outtoRight;
     }
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -75,17 +75,18 @@ public class SlideMain extends Activity {
         setContentView(R.layout.main);
         GestureListener customGestureDetector = new GestureListener();
         flipper = (ViewFlipper) findViewById(R.id.flipper);
-        /*pageIndicator = (PageIndicator)findViewById(R.id.pageIndicator);
+        mGestureDetector = new GestureDetector(this, customGestureDetector);
+        pageIndicator = (PageIndicator) findViewById(R.id.pageIndicator);
         pageIndicator.setTotalNoOfDots(flipper.getChildCount());
-        pageIndicator.setActiveDot(1);
-        pageIndicator.setDotSpacing(10);*/
+        pageIndicator.setActiveDot(0);
+        pageIndicator.setDotSpacing(10);
 
     }
 
 
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
-        private static final int SWIPE_MIN_DISTANCE = 50;
-        private static final int SWIPE_THRESHOLD_VELOCITY = 20;
+        private static final int SWIPE_MIN_DISTANCE = 30;
+        private static final int SWIPE_THRESHOLD_VELOCITY = 5;
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             try {
@@ -95,8 +96,10 @@ public class SlideMain extends Activity {
                             getBaseContext(), R.anim.push_out_left));
                     flipper.setInAnimation(AnimationUtils.loadAnimation(
                             getBaseContext(), R.anim.pull_in_right));
-                    flipper.showNext();
-                    //pageIndicator.setActiveDot(pageIndicator.getActiveDot()+1);
+                    if (pageIndicator.getActiveDot() < pageIndicator.getTotalNoOfDots() - 1) {
+                        pageIndicator.setActiveDot(pageIndicator.getActiveDot() + 1);
+                        flipper.showNext();
+                    }
                     return true; // Right to left
                 } else if (e2.getX() - e1.getX() > SWIPE_MIN_DISTANCE && Math.abs(velocityX) > SWIPE_THRESHOLD_VELOCITY) {
 
@@ -104,8 +107,10 @@ public class SlideMain extends Activity {
                             getBaseContext(), R.anim.push_out_right));
                     flipper.setInAnimation(AnimationUtils.loadAnimation(
                             getBaseContext(), R.anim.pull_in_left));
-                    flipper.showPrevious();
-                    //pageIndicator.setActiveDot(pageIndicator.getActiveDot()-1);
+                    if (pageIndicator.getActiveDot() > 0) {
+                        pageIndicator.setActiveDot(pageIndicator.getActiveDot() - 1);
+                        flipper.showPrevious();
+                    }
                     return true; // Left to right
                 }
 
