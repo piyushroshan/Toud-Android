@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    android:id="@+id/LinearLayout01"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+        <ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/flipper"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent">
+
+            <include
+                android:id="@+id/firstscreen"
+                layout="@layout/start_screen1" />
+
+            <include
+                android:id="@+id/secondscreen"
+                layout="@layout/start_screen2" />
+
+            <include
+                android:id="@+id/lastscreen"
+                layout="@layout/start_screen3" />
+
+        </ViewFlipper>
+    <!-- <LinearLayout
+        android:id="@+id/layoutPageIndicator"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:layout_marginTop="5dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:background="#fffcfaff">
+
+        <in.toud.toud.ui.PageIndicator
+            android:id="@+id/pageIndicator"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:background="#fffff8f8" />
+
+    </LinearLayout>
+-->
+</LinearLayout>
+<!-- From: file:/home/rpiyush/AndroidStudioProjects/Toud/app/src/main/res/layout/main.xml -->
