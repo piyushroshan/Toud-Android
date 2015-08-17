@@ -2,7 +2,8 @@
     <string name="app_name">Toud</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-    <string name="startscreen1">A\nToud\nWelcome</string>
-    <string name="startscreen2">To\nUr\nDoor</string>
+    <string name="startscreen1">To Ur Door</string>
+    <string name="startscreen2">Description</string>
     <string name="startscreen3">Register</string>
+    <string name="new_chat">New Chat</string>
 </resources>

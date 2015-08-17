@@ -31,15 +31,31 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="5dp"
-        android:layout_marginTop="5dp"
         android:gravity="center"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
         <in.toud.toud.ui.PageIndicator
             android:id="@+id/pageIndicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/registration_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:background="#ff000dff"
+            android:backgroundTint="#ff00b4ff"
+            android:capitalize="words"
+            android:clickable="true"
+            android:elegantTextHeight="false"
+            android:gravity="center"
+            android:text="Register Now"
+            android:textAlignment="center"
+            android:textColor="#fffffe00"
+            android:textSize="@dimen/abc_action_button_min_width_overflow_material"
+            android:textStyle="bold"
+            android:typeface="serif"
+            android:visibility="visible" />
     </LinearLayout>
 </RelativeLayout>
 

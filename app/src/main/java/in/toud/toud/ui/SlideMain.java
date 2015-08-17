@@ -1,4 +1,4 @@
-package in.toud.toud;
+package in.toud.toud.ui;
 
 import android.app.Activity;
 import android.content.Context;
@@ -17,51 +17,16 @@ import android.widget.Toast;
 import android.widget.ViewFlipper;
 import com.trncic.library.DottedProgressBar;
 
+import butterknife.ButterKnife;
+import butterknife.OnClick;
+import in.toud.toud.R;
 import in.toud.toud.ui.PageIndicator;
 
 public class SlideMain extends Activity {
     ViewFlipper flipper;
     private GestureDetector mGestureDetector;
     private PageIndicator pageIndicator;
-    private Animation inFromRightAnimation() {
 
-        Animation inFromRight = new TranslateAnimation(
-                Animation.RELATIVE_TO_PARENT,  +1.0f, Animation.RELATIVE_TO_PARENT,  0.0f,
-                Animation.RELATIVE_TO_PARENT,  0.0f, Animation.RELATIVE_TO_PARENT,   0.0f
-        );
-        inFromRight.setDuration(500);
-        inFromRight.setInterpolator(new AccelerateInterpolator());
-        return inFromRight;
-    }
-
-    private Animation outToLeftAnimation() {
-        Animation outtoLeft = new TranslateAnimation(
-                Animation.RELATIVE_TO_PARENT,  0.0f, Animation.RELATIVE_TO_PARENT,  -1.0f,
-                Animation.RELATIVE_TO_PARENT,  0.0f, Animation.RELATIVE_TO_PARENT,   0.0f
-        );
-        outtoLeft.setDuration(500);
-        outtoLeft.setInterpolator(new AccelerateInterpolator());
-        return outtoLeft;
-    }
-
-    private Animation inFromLeftAnimation() {
-        Animation inFromLeft = new TranslateAnimation(
-                Animation.RELATIVE_TO_PARENT,  -1.0f, Animation.RELATIVE_TO_PARENT,  0.0f,
-                Animation.RELATIVE_TO_PARENT,  0.0f, Animation.RELATIVE_TO_PARENT,   0.0f
-        );
-        inFromLeft.setDuration(500);
-        inFromLeft.setInterpolator(new AccelerateInterpolator());
-        return inFromLeft;
-    }
-    private Animation outToRightAnimation() {
-        Animation outtoRight = new TranslateAnimation(
-                Animation.RELATIVE_TO_PARENT,  0.0f, Animation.RELATIVE_TO_PARENT,  +1.0f,
-                Animation.RELATIVE_TO_PARENT,  0.0f, Animation.RELATIVE_TO_PARENT,   0.0f
-        );
-        outtoRight.setDuration(500);
-        outtoRight.setInterpolator(new AccelerateInterpolator());
-        return outtoRight;
-    }
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         super.onTouchEvent(event);
@@ -78,11 +43,16 @@ public class SlideMain extends Activity {
         mGestureDetector = new GestureDetector(this, customGestureDetector);
         pageIndicator = (PageIndicator) findViewById(R.id.pageIndicator);
         pageIndicator.setTotalNoOfDots(flipper.getChildCount());
+        pageIndicator.resizeCircle(0.5f);
         pageIndicator.setActiveDot(0);
-        pageIndicator.setDotSpacing(10);
-
+        pageIndicator.setDotSpacing(5);
+        ButterKnife.bind(this);
     }
 
+    @OnClick(R.id.registration_button)
+    void registerButton(Button button) {
+        button.setText("Lol");
+    }
 
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         private static final int SWIPE_MIN_DISTANCE = 30;
@@ -126,6 +96,5 @@ public class SlideMain extends Activity {
             return false;
         }
     }
-
 
 }

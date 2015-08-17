@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
@@ -44,6 +45,29 @@ public class PageIndicator extends View{
 
     }
 
+    private Bitmap getResizedBitmap(Bitmap bm, float scale) {
+        int width = bm.getWidth();
+        int height = bm.getHeight();
+        float newWidth = bm.getWidth() * scale;
+        float newHeight = bm.getHeight() * scale;
+        float scaleWidth = ((float) newWidth) / width;
+        float scaleHeight = ((float) newHeight) / height;
+        // CREATE A MATRIX FOR THE MANIPULATION
+        Matrix matrix = new Matrix();
+        // RESIZE THE BIT MAP
+        matrix.postScale(scaleWidth, scaleHeight);
+
+        // "RECREATE" THE NEW BITMAP
+        Bitmap resizedBitmap = Bitmap.createBitmap(
+                bm, 0, 0, width, height, matrix, false);
+        return resizedBitmap;
+    }
+
+    public void resizeCircle(float scale) {
+        activeDotBitmap = getResizedBitmap(activeDotBitmap, scale);
+        normalDotBitmap = getResizedBitmap(normalDotBitmap, scale);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         drawDot(canvas);
@@ -69,7 +93,7 @@ public class PageIndicator extends View{
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int width = totalNoOfDots*(activeDotBitmap.getWidth()+horizontalSpace+ getDotSpacing());
+        int width = totalNoOfDots * (activeDotBitmap.getWidth() + horizontalSpace + getDotSpacing());
         width = resolveSize(width, widthMeasureSpec);
         int height = activeDotBitmap.getHeight();
         height = resolveSize(height, heightMeasureSpec);
