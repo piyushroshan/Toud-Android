@@ -17,7 +17,6 @@ public class AppController extends Application {
     private static final String SHARED_PREFERENCES_PASSWORD_KEY = "in.toud.toud.password";
     private static final String SHARED_PREFERENCES_SERVER_KEY = "in.toud.toud.server";
 
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -57,4 +56,5 @@ public class AppController extends Application {
     private static SharedPreferences getPreferences(int mode) {
         return getAppContext().getSharedPreferences(SHARED_PREFERENCES_KEY, mode);
     }
+
 }

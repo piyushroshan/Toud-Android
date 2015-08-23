@@ -13,8 +13,7 @@ public class Message extends RealmObject {
     public static final String TAG = Message.class.getSimpleName();
     @PrimaryKey
     private long id;
-    private String Message;
-    private long TimeStamp;
+    private String message;
     private boolean isRead;
     private boolean isSent;
     private String from;
@@ -22,7 +21,7 @@ public class Message extends RealmObject {
     private long time;
 
     public long getId() {
-        return this.getId();
+        return this.id;
     }
 
     public void setId(long id) {
@@ -30,23 +29,23 @@ public class Message extends RealmObject {
     }
 
     public String getMessage() {
-        return Message;
+        return message;
     }
 
     public void setMessage(String message) {
-        Message = message;
+        this.message = message;
     }
 
-    public long getTimeStamp() {
-        return TimeStamp;
+    public long getTime() {
+        return this.time;
     }
 
-    public void setTimeStamp(long timeStamp) {
-        TimeStamp = timeStamp;
+    public void setTime(long time) {
+        this.time = time;
     }
 
-    public boolean isRead() {
-        return isRead;
+    public boolean getisRead() {
+        return this.isRead;
     }
 
     public void setIsRead(boolean isRead) {
@@ -69,21 +68,14 @@ public class Message extends RealmObject {
         return this.to;
     }
 
-    public boolean isSent() {
-        return isRead;
+    public boolean getIsSent() {
+        return this.isSent;
     }
 
-    public void setIsSent(boolean isReaded) {
-        this.isRead = isReaded;
+    public void setIsSent(boolean isSent) {
+        this.isSent = isSent;
     }
 
-    public long getTime() {
-        return this.time;
-    }
-
-    public void setTime(long time) {
-        this.time = time;
-    }
 
 
 }

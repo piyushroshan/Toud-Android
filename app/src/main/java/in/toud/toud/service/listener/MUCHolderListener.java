@@ -141,12 +141,12 @@ public class MUCHolderListener implements   InvitationListener, MessageListener,
     }
 
     @Override
-    public void invitationReceived(XMPPConnection conn, MultiUserChat room, String inviter, String reason, String password, Message message) {
+    public void invitationReceived(XMPPConnection conn, MultiUserChat room, String inviter, String reason, String password, CMessage message) {
 
     }
 
     @Override
-    public void processMessage(Message message) {
+    public void processMessage(CMessage message) {
         Log.i(DEBUG_TAG,"processMessage"+message);
         ProcessMessageAsyncTask processMessageAsyncTask =new ProcessMessageAsyncTask();
         processMessageAsyncTask.execute(message);
@@ -208,7 +208,7 @@ public class MUCHolderListener implements   InvitationListener, MessageListener,
         return Jid;
     }
 
-    private class ProcessMessageAsyncTask extends AsyncTask<Message, Integer, String> {
+    private class ProcessMessageAsyncTask extends AsyncTask<CMessage, Integer, String> {
         */
 /**
  *
@@ -216,15 +216,15 @@ public class MUCHolderListener implements   InvitationListener, MessageListener,
  * @return
  *//*
 
-        protected String doInBackground(Message... messages) {
-            Message message=messages[0];
+        protected String doInBackground(CMessage... messages) {
+            CMessage message=messages[0];
             Log.i(DEBUG_TAG,"ProcessMessageAsyncTask "+message);
             String nick          = message.getFrom().split("/")[1];
             String resultMessage = "something goes wrong!";
             if(!nick.equals(mMyNick)){
 
                 Long jid=null;
-                if (message.getType() == Message.Type.groupchat||message.getType() == Message.Type.normal) {
+                if (message.getType() == CMessage.Type.groupchat||message.getType() == CMessage.Type.normal) {
                     String[] split = message.getFrom().split("/");
                     jid = mNickToJidMap.get(split[1]);
 

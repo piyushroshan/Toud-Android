@@ -51,7 +51,6 @@ public class XMMPService extends Service implements ConnectionListener {
 
 
     public static final int DEFAULT_XMPP_PORT = 5222;
-    public static final String DEFAULT_XMPP_HOST = "192.168.1.6";
     private String mServer;
 
     private AbstractXMPPConnection mConnection;
@@ -75,7 +74,6 @@ public class XMMPService extends Service implements ConnectionListener {
             mRosterHolderListener.createRoster(m);
         }
     }
-
 
     public class LocalBinder extends Binder {
         public XMMPService getService() {
@@ -121,10 +119,16 @@ public class XMMPService extends Service implements ConnectionListener {
         mXMPPTread.execute();
     }
 
-    public void sendMessageToChat(int id, String message, int chatType) {
+    public void sendMessageToChat(int id, String message ) {
 
         SendMessageAsyncTask mSendMessageAsyncTask = new SendMessageAsyncTask();
-        mSendMessageAsyncTask.execute(id, message, chatType);
+        mSendMessageAsyncTask.execute(id, null, message, 0);
+
+    }
+    public void sendMessageToChat(String jid, String message) {
+
+        SendMessageAsyncTask mSendMessageAsyncTask = new SendMessageAsyncTask();
+        mSendMessageAsyncTask.execute(0, jid, message, 1);
 
     }
 
@@ -292,16 +296,18 @@ public class XMMPService extends Service implements ConnectionListener {
          */
         protected String doInBackground(Object... objects) {
             int cid = (int) objects[0];
-            String message = (String) objects[1];
-            int chatType = (int) objects[2];
+            String jid = (String) objects[1];
+            String message = (String) objects[2];
+            int option = (int) objects[3];
             Log.d(DEBUG_TAG, " doInBackground with SendMessageAsyncTask");
             String resultMessage = "something goes wrong!";
             boolean isSuccess;
-            //if(chatType == ChatFragment.CHAT_TYPE_UUC){
-            resultMessage = sendMessageToSingleChat(cid, message);
-            //}else {
-            //   resultMessage = sendMessageToMultiChat(jid, message);
-            //}
+
+            if(option == 0) {
+                resultMessage = sendMessageToSingleChat(cid, message);
+            }else if(option == 1){
+                resultMessage = sendMessageToSingleChat(jid, message);
+            }
 
             return resultMessage;
         }
@@ -311,7 +317,7 @@ public class XMMPService extends Service implements ConnectionListener {
             String jid = mChatHolderListener.getJid(cid);
             String defaultChatTread = getDefaultTread();
             isSuccess = mChatHolderListener.sendMessage(cid,
-                    defaultChatTread,
+                    jid,
                     message);
             String resultMessage = "something goes wrong!";
             if (isSuccess) {
@@ -326,6 +332,25 @@ public class XMMPService extends Service implements ConnectionListener {
             return resultMessage;
         }
 
+        private String sendMessageToSingleChat(String to, String message) {
+            boolean isSuccess;
+            String defaultChatTread = getDefaultTread();
+            int cid = mChatHolderListener.getChatId(to, defaultChatTread);
+
+            isSuccess = mChatHolderListener.sendMessage(to, message);
+            String resultMessage = "something goes wrong!";
+            if (isSuccess) {
+                resultMessage = "Message: " + message + " send to" + to;
+            }
+            boolean isViewed = true;
+            Realm realm = Realm.getInstance(AppController.getAppContext());
+            RealmQuery query = realm.where(User.class);
+            RealmObject userRealmObject = query.findFirst();
+            User myself = (User) userRealmObject;
+            ChatHolderListener.saveToHistory(to, myself.getUsername(), message, isSuccess, isViewed);
+            return resultMessage;
+        }
+
         /*private String sendMessageToMultiChat(int jid, String message) {
             boolean isSuccess;
             String defaultChatTread = getDefaultTread();
@@ -333,7 +358,7 @@ public class XMMPService extends Service implements ConnectionListener {
                     message);
             String resultMessage = "something goes wrong!";
             if(isSuccess){
-                resultMessage ="Message: "+ message +" send to"+ mMultiUserChatHolder.getRoomName();
+                resultMessage ="CMessage: "+ message +" send to"+ mMultiUserChatHolder.getRoomName();
             }
             boolean isViewed = true;
             ChatHolderListener.saveToHistory(jid, AppSQLiteOpenHelper.MY_JID_ID, message, isSuccess,isViewed);

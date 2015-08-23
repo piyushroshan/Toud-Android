@@ -14,6 +14,7 @@ public class Chat extends RealmObject {
     private int chatId;
     private String participant;
     private long time;
+    private String threadId;
 
     public long getTime() {
         return this.time;
@@ -37,5 +38,13 @@ public class Chat extends RealmObject {
 
     public void setParticipant(String participant) {
         this.participant = participant;
+    }
+
+    public String getThreadId() {
+        return this.threadId;
+    }
+
+    public void setThreadId(String threadId) {
+        this.threadId = threadId;
     }
 }

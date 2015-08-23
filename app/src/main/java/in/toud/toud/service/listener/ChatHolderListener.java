@@ -4,8 +4,6 @@ package in.toud.toud.service.listener;
  * Created by rpiyush on 15/8/15.
  */
 
-import android.content.ContentValues;
-import android.database.Cursor;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -13,7 +11,8 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import in.toud.toud.AppController;
-import in.toud.toud.model.JID;
+import in.toud.toud.chat.CMessage;
+import in.toud.toud.events.MessageRecievedEvent;
 import in.toud.toud.model.User;
 import io.realm.Realm;
 import io.realm.RealmObject;
@@ -60,6 +59,7 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
 
     @Override
     public void processMessage(Chat chat, Message message) {
+        CMessage cMessage;
         Log.d(DEBUG_TAG, "call processMessage");
         String threadID = chat.getThreadID();
         String participant = chat.getParticipant();
@@ -73,10 +73,17 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         if (message.getType() == Message.Type.chat || message.getType() == Message.Type.normal) {
             if (message.getBody() != null) {
                 saveToHistory(jid, myself.getUsername(), message.getBody(), true, false);
+                playRingtone();
             }
-            playRingtone();
+        }
+
+        if (message.getType() == Message.Type.chat || message.getType() == Message.Type.normal) {
+            cMessage = new CMessage(message.getBody(), jid);
+        }else {
+            cMessage = new CMessage(true,message.getBody());
         }
     }
+
 
     public int getChatId(String participant, String threadID) {
         int cid = -1;
@@ -86,32 +93,43 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         RealmQuery<in.toud.toud.model.Chat> query = realm.where(in.toud.toud.model.Chat.class);
         if (threadID != null) {
             query.equalTo("participant", participant).equalTo("threadId", threadID);
-            RealmResults<in.toud.toud.model.Chat> realmResults = query.findAllSorted("date", true);
-            myChat = realmResults.first();
+            RealmResults<in.toud.toud.model.Chat> realmResults = query.findAllSorted("time", true);
+            if (realmResults.size() > 0){
+                myChat = realmResults.first();
+            }else{
+                myChat = null;
+            }
             if (myChat == null) {
-                chat = mChatManager.createChat(participant, threadID, this);
+                chat = mChatManager.getThreadChat(threadID);
+                if (chat == null){
+                    chat = mChatManager.createChat(participant, threadID, this);
+                }
+
             } else {
                 cid = myChat.getChatId();
                 chat = mChatSparseArray.get(cid);
-                return cid;
             }
 
         } else {
             query.equalTo("participant", participant);
-            RealmResults<in.toud.toud.model.Chat> realmResults = query.findAllSorted("date", true);
-            myChat = realmResults.first();
+            RealmResults<in.toud.toud.model.Chat> realmResults = query.findAllSorted("time", true);
+            if (realmResults.size() > 0){
+                myChat = realmResults.first();
+            }else{
+                myChat = null;
+            }
             if (myChat == null) {
                 chat = mChatManager.createChat(participant, this);
             } else {
                 cid = myChat.getChatId();
                 chat = mChatSparseArray.get(cid);
-                return cid;
             }
         }
         if (myChat == null) {
             cid = mChatSparseArray.size();
             mChatSparseArray.append(cid, chat);
-            myChat = realm.createObject(in.toud.toud.model.Chat.class);
+            myChat = new in.toud.toud.model.Chat();
+            myChat.setThreadId(chat.getThreadID());
             myChat.setChatId(cid);
             myChat.setParticipant(chat.getParticipant());
             realm.beginTransaction();
@@ -132,9 +150,9 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
             chat = mChatManager.createChat(toUser, this);
             mChatSparseArray.append(cid, chat);
             Realm realm = Realm.getInstance(AppController.getAppContext());
-            in.toud.toud.model.Chat myChat = realm.createObject(in.toud.toud.model.Chat.class);
+            in.toud.toud.model.Chat myChat = new in.toud.toud.model.Chat();
             myChat.setChatId(cid);
-            myChat.setParticipant(chat.getParticipant().split("/")[0]);
+            myChat.setParticipant(chat.getParticipant());
             myChat.setTime(System.currentTimeMillis());
             realm.beginTransaction();
             realm.copyToRealmOrUpdate(myChat);
@@ -151,6 +169,32 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         return true;
     }
 
+    public boolean sendMessage(String toUser, String message) {
+        Log.d(DEBUG_TAG, "sendMessage");
+        int cid = getChatId(toUser, null);
+        Chat chat = mChatSparseArray.get(cid);
+        if (chat == null) {
+            chat = mChatManager.createChat(toUser, this);
+            mChatSparseArray.append(cid, chat);
+            Realm realm = Realm.getInstance(AppController.getAppContext());
+            in.toud.toud.model.Chat myChat = new in.toud.toud.model.Chat();
+            myChat.setChatId(cid);
+            myChat.setParticipant(chat.getParticipant());
+            myChat.setTime(System.currentTimeMillis());
+            realm.beginTransaction();
+            realm.copyToRealmOrUpdate(myChat);
+            realm.commitTransaction();
+        }
+        try {
+            chat.sendMessage(message);
+
+        } catch (SmackException.NotConnectedException e) {
+            Log.e(DEBUG_TAG, "Exception occurred while sending message!", e);
+            return false;
+        }
+        return true;
+    }
+
     private void playRingtone() {
         try {
             Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
@@ -162,8 +206,9 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
     }
 
     public static void saveToHistory(String jidTo, String jidFrom, String message, boolean isSuccess, boolean isViewed) {
+        long nextKey;
         Realm realm = Realm.getInstance(AppController.getAppContext());
-        in.toud.toud.model.Message msg = realm.createObject(in.toud.toud.model.Message.class);
+        in.toud.toud.model.Message msg = new in.toud.toud.model.Message();
         msg.setTo(jidTo);
         msg.setFrom(jidFrom);
         msg.setMessage(message);
@@ -172,7 +217,11 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         msg.setTime(System.currentTimeMillis());
         realm.beginTransaction();
         RealmResults<in.toud.toud.model.Message> myclassRealmResults = realm.where(in.toud.toud.model.Message.class).findAllSorted("id", false);
-        long nextKey = myclassRealmResults.first().getId() + 1;
+        if (myclassRealmResults.size() > 0){
+          nextKey = myclassRealmResults.first().getId() + 1;
+        }else{
+            nextKey = 1;
+        }
         msg.setId(nextKey);
         realm.copyToRealmOrUpdate(msg);
         realm.commitTransaction();
