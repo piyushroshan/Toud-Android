@@ -40,6 +40,7 @@ import io.realm.RealmQuery;
 public class MainActivity extends ActionBarActivity implements JIDListFragment.OnFragmentInteractionListener {
 
     public static final String EXTRA_NAME = "cheese_name";
+    private XMMPService service;
 
     @Bind(R.id.appbar)
     AppBarLayout mAppBarLayout;
@@ -55,7 +56,7 @@ public class MainActivity extends ActionBarActivity implements JIDListFragment.O
      */
     JID you;
     private Realm realm;
-    private final String DEBUG_TAG = "TOOOOOOOOOOOOoUD";
+    private final String DEBUG_TAG = "TOUD";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,7 +75,7 @@ public class MainActivity extends ActionBarActivity implements JIDListFragment.O
         realm = Realm.getInstance(AppController.getAppContext());
 
         User yourJID = new User();
-        yourJID.setUsername("roshan@192.168.1.6");
+        yourJID.setUsername("roshan");
         yourJID.setPassword("roshan");
         yourJID.setNickName("Roshan Piyush");
         yourJID.setIsAvailable(true);
@@ -92,7 +93,7 @@ public class MainActivity extends ActionBarActivity implements JIDListFragment.O
         TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
         tabLayout.setupWithViewPager(viewPager);
 
-        XMMPService service = new XMMPService();
+        service = new XMMPService();
         Realm realm = Realm.getInstance(AppController.getAppContext());
         RealmQuery query = realm.where(User.class);
         RealmObject userRealmObject = query.findFirst();

@@ -92,11 +92,13 @@ public class RosterHolderListener implements RosterListener {
         mRosterEntries = new ArrayList<>(mRoster.getEntries());
         Realm realm = Realm.getInstance(AppController.getAppContext());
         for (RosterEntry entry : mRosterEntries) {
-            JID jid = realm.createObject(JID.class);
+            JID jid = new JID();
+            Log.d("GET_FROM",entry.getName()+entry.getUser());
             jid.setNickName(entry.getName());
-            jid.setJID(entry.getName());
+            jid.setJID(entry.getUser());
             Presence presence = mRoster.getPresence(entry.getUser());
             jid.setIsAvailable(true);
+            jid.setPresence(presence.getStatus());
             realm.beginTransaction();
             realm.copyToRealmOrUpdate(jid);
             realm.commitTransaction();
@@ -109,6 +111,7 @@ public class RosterHolderListener implements RosterListener {
      * @param presence
      */
     private void updateStatus(Presence presence) {
+        Log.d("GET_FROM",presence.getFrom());
         Realm realm = Realm.getInstance(AppController.getAppContext());
         RealmQuery<JID> query = realm.where(JID.class).equalTo("JID", presence.getFrom().split("/")[0]);
         JID user1 = query.findFirst();

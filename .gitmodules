@@ -1,0 +1,3 @@
+[submodule "library/MemorizingTrustManager"]
+	path = library/MemorizingTrustManager
+	url = https://github.com/ge0rg/MemorizingTrustManager
