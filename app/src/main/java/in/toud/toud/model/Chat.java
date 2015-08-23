@@ -19,7 +19,6 @@ public class Chat extends RealmObject {
     public long getTime() {
         return this.time;
     }
-
     public void setTime(long time) {
         this.time = time;
     }

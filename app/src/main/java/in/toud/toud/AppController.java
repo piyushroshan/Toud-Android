@@ -4,6 +4,8 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import de.halfbit.tinybus.TinyBus;
+
 /**
  * Created by rpiyush on 15/8/15.
  */
@@ -22,6 +24,13 @@ public class AppController extends Application {
         super.onCreate();
         appContext = getApplicationContext();
         instance = this;
+        TinyBus.from(this).register(appContext);
+    }
+
+    @Override
+    public void onTerminate() {
+        TinyBus.from(appContext).unregister(this);
+        super.onTerminate();
     }
 
     public AppController getInstance() {

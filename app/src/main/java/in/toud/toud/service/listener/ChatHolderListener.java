@@ -10,15 +10,20 @@ import android.net.Uri;
 import android.util.Log;
 import android.util.SparseArray;
 
+import de.halfbit.tinybus.TinyBus;
 import in.toud.toud.AppController;
 import in.toud.toud.chat.CMessage;
+import in.toud.toud.chat.ChatCloudM;
+import in.toud.toud.events.ChatCloudRecievedEvent;
 import in.toud.toud.events.MessageRecievedEvent;
+import in.toud.toud.model.ChatCloud;
 import in.toud.toud.model.User;
 import io.realm.Realm;
 import io.realm.RealmObject;
 import io.realm.RealmQuery;
 import io.realm.RealmResults;
 
+import org.jivesoftware.smack.PresenceListener;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.chat.Chat;
@@ -26,17 +31,27 @@ import org.jivesoftware.smack.chat.ChatManager;
 import org.jivesoftware.smack.chat.ChatManagerListener;
 import org.jivesoftware.smack.chat.ChatMessageListener;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.packet.Stanza;
+import org.jivesoftware.smackx.chatstates.ChatState;
+import org.jivesoftware.smackx.chatstates.ChatStateListener;
+import org.jivesoftware.smackx.chatstates.ChatStateManager;
+import org.jivesoftware.smackx.chatstates.packet.ChatStateExtension;
+import org.jivesoftware.smackx.vcardtemp.VCardManager;
+import org.jivesoftware.smackx.vcardtemp.packet.VCard;
 
 /**
  * Created by rpiyush on 15/8/15.
  */
-public class ChatHolderListener implements ChatManagerListener, ChatMessageListener {
+public class ChatHolderListener implements ChatManagerListener, ChatMessageListener, ChatStateListener {
 
 
     private static final String DEBUG_TAG = ChatHolderListener.class.getSimpleName();
     private final ChatManager mChatManager;
     private final SparseArray<Chat> mChatSparseArray;
-
+    private final XMPPConnection connection;
+    private final VCardManager mVCardManager;
+    private final ChatStateManager mChatStateManager;
 
     public ChatHolderListener(XMPPConnection xmppConnection) {
 
@@ -47,6 +62,9 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         if (mChatManager != null) {
             mChatManager.addChatListener(this);
         }
+        mChatStateManager = ChatStateManager.getInstance(xmppConnection);
+        this.connection = xmppConnection;
+        mVCardManager = VCardManager.getInstanceFor(xmppConnection);
     }
 
     @Override
@@ -56,6 +74,7 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
 
         //TODO: add chat creation handler
     }
+
 
     @Override
     public void processMessage(Chat chat, Message message) {
@@ -72,18 +91,68 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         User myself = (User) userRealmObject;
         if (message.getType() == Message.Type.chat || message.getType() == Message.Type.normal) {
             if (message.getBody() != null) {
-                saveToHistory(jid, myself.getUsername(), message.getBody(), true, false);
+                Log.d(DEBUG_TAG, message.toString());
+                String[] mMessage = message.getBody().split("#", 2);
                 playRingtone();
-            }
-        }
+                cMessage = new CMessage(mMessage[0], mMessage[1], jid);
+                ChatCloud chatCloud = new ChatCloud();
+                chatCloud.setChatCloudTag(mMessage[0]);
+                chatCloud.setSupport(jid);
+                if (realm.where(ChatCloud.class).equalTo("chatCloudTag", mMessage[0]).findFirst() == null) {
+                    TinyBus.from(AppController.getAppContext()).post(new ChatCloudRecievedEvent(new ChatCloudM(mMessage[0])));
+                    realm.beginTransaction();
+                    realm.copyToRealmOrUpdate(chatCloud);
+                    realm.commitTransaction();
+                }
+            } else {
+                String msg;
+                ChatStateExtension chatStateExtension = (ChatStateExtension) message.getExtension("http://jabber.org/protocol/chatstates");
+                ChatState chatState = chatStateExtension.getChatState();
+                String name;
+                try {
+                    VCard mVCard = mVCardManager.loadVCard(jid);
+                    name = mVCard.getNickName();
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                    name = participant.split("@")[0];
+                }
 
-        if (message.getType() == Message.Type.chat || message.getType() == Message.Type.normal) {
-            cMessage = new CMessage(message.getBody(), jid);
-        }else {
-            cMessage = new CMessage(true,message.getBody());
+                if (ChatState.composing.equals(chatState)) {
+                    msg = name + " is typing..";
+                } else if (ChatState.gone.equals(chatState)) {
+                    msg = name + " has left the conversation.";
+                } else {
+                    msg = name + ": " + chatState.name();
+                }
+                Log.d(DEBUG_TAG, chatStateExtension.getChatState().toString());
+                cMessage = new CMessage(msg, false);
+            }
+        } else {
+            Log.d(DEBUG_TAG, message.toString());
+            String mMessage = message.getBody();
+            cMessage = new CMessage(mMessage, false);
         }
+        TinyBus.from(AppController.getAppContext()).post(new MessageRecievedEvent(cMessage));
     }
 
+    @Override
+    public void stateChanged(Chat chat, ChatState chatState) {
+        Log.d(DEBUG_TAG, "call stateChange");
+        String msg;
+        String threadID = chat.getThreadID();
+        String participant = chat.getParticipant();
+        String[] splitedParticipant = participant.split("/");
+        int cid = getChatId(splitedParticipant[0], threadID);
+        if (ChatState.composing.equals(chatState)) {
+            msg = participant.split("@")[0] + " is typing..";
+        } else if (ChatState.gone.equals(chatState)) {
+            msg = participant.split("@")[0] + " has left the conversation.";
+        } else {
+            msg = participant.split("@")[0] + ": " + chatState.name();
+        }
+        CMessage cMessage = new CMessage(msg, false);
+        TinyBus.from(AppController.getAppContext()).post(new MessageRecievedEvent(cMessage));
+    }
 
     public int getChatId(String participant, String threadID) {
         int cid = -1;
@@ -131,7 +200,7 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
             myChat = new in.toud.toud.model.Chat();
             myChat.setThreadId(chat.getThreadID());
             myChat.setChatId(cid);
-            myChat.setParticipant(chat.getParticipant());
+            myChat.setParticipant(chat.getParticipant().split("/")[0]);
             realm.beginTransaction();
             realm.copyToRealmOrUpdate(myChat);
             realm.commitTransaction();
@@ -152,7 +221,7 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
             Realm realm = Realm.getInstance(AppController.getAppContext());
             in.toud.toud.model.Chat myChat = new in.toud.toud.model.Chat();
             myChat.setChatId(cid);
-            myChat.setParticipant(chat.getParticipant());
+            myChat.setParticipant(chat.getParticipant().split("/")[0]);
             myChat.setTime(System.currentTimeMillis());
             realm.beginTransaction();
             realm.copyToRealmOrUpdate(myChat);
@@ -179,7 +248,7 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
             Realm realm = Realm.getInstance(AppController.getAppContext());
             in.toud.toud.model.Chat myChat = new in.toud.toud.model.Chat();
             myChat.setChatId(cid);
-            myChat.setParticipant(chat.getParticipant());
+            myChat.setParticipant(chat.getParticipant().split("/")[0]);
             myChat.setTime(System.currentTimeMillis());
             realm.beginTransaction();
             realm.copyToRealmOrUpdate(myChat);
@@ -187,9 +256,33 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         }
         try {
             chat.sendMessage(message);
-
         } catch (SmackException.NotConnectedException e) {
             Log.e(DEBUG_TAG, "Exception occurred while sending message!", e);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean sendChatStateMessage(String toUser, ChatState state) {
+        Log.d(DEBUG_TAG, "sendChatState");
+        int cid = getChatId(toUser, null);
+        Chat chat = mChatSparseArray.get(cid);
+        if (chat == null) {
+            chat = mChatManager.createChat(toUser, this);
+            mChatSparseArray.append(cid, chat);
+            Realm realm = Realm.getInstance(AppController.getAppContext());
+            in.toud.toud.model.Chat myChat = new in.toud.toud.model.Chat();
+            myChat.setChatId(cid);
+            myChat.setParticipant(chat.getParticipant().split("/")[0]);
+            myChat.setTime(System.currentTimeMillis());
+            realm.beginTransaction();
+            realm.copyToRealmOrUpdate(myChat);
+            realm.commitTransaction();
+        }
+        try {
+            mChatStateManager.setCurrentState(state, chat);
+        } catch (SmackException.NotConnectedException e) {
+            Log.e(DEBUG_TAG, "Exception occurred while sending chatState!", e);
             return false;
         }
         return true;
@@ -205,8 +298,9 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         }
     }
 
-    public static void saveToHistory(String jidTo, String jidFrom, String message, boolean isSuccess, boolean isViewed) {
+    public static void saveToHistory(String jidTo, String jidFrom, String chatCloudTag, String message, boolean isSuccess, boolean isViewed) {
         long nextKey;
+        ChatCloud chatCloud;
         Realm realm = Realm.getInstance(AppController.getAppContext());
         in.toud.toud.model.Message msg = new in.toud.toud.model.Message();
         msg.setTo(jidTo);
@@ -215,8 +309,16 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         msg.setIsRead(isViewed);
         msg.setIsSent(isSuccess);
         msg.setTime(System.currentTimeMillis());
-        realm.beginTransaction();
         RealmResults<in.toud.toud.model.Message> myclassRealmResults = realm.where(in.toud.toud.model.Message.class).findAllSorted("id", false);
+        RealmResults<ChatCloud> chatCloudRealmResults = realm.where(ChatCloud.class).equalTo("chatCloudTag", chatCloudTag).findAll();
+        if (chatCloudRealmResults.size() > 0) {
+            chatCloud = chatCloudRealmResults.first();
+        } else {
+            chatCloud = new ChatCloud();
+            chatCloud.setChatCloudTag(chatCloudTag);
+        }
+        realm.beginTransaction();
+        chatCloud.setLastSent(System.currentTimeMillis());
         if (myclassRealmResults.size() > 0){
           nextKey = myclassRealmResults.first().getId() + 1;
         }else{
@@ -224,6 +326,7 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         }
         msg.setId(nextKey);
         realm.copyToRealmOrUpdate(msg);
+        realm.copyToRealmOrUpdate(chatCloud);
         realm.commitTransaction();
     }
 

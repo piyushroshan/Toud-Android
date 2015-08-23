@@ -19,6 +19,15 @@ public class Message extends RealmObject {
     private String from;
     private String to;
     private long time;
+    private String chatCloudTag;
+
+    public String getChatCloudTag() {
+        return this.chatCloudTag;
+    }
+
+    public void setChatCloudTag(String cloud) {
+        this.chatCloudTag = cloud;
+    }
 
     public long getId() {
         return this.id;
@@ -44,7 +53,7 @@ public class Message extends RealmObject {
         this.time = time;
     }
 
-    public boolean getisRead() {
+    public boolean getIsRead() {
         return this.isRead;
     }
 

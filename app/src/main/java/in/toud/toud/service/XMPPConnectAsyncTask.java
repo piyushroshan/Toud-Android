@@ -6,6 +6,7 @@ package in.toud.toud.service;
 
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.Toast;
 
 import de.duenndns.ssl.MemorizingTrustManager;
 import in.toud.toud.AppController;
@@ -83,19 +84,26 @@ public class XMPPConnectAsyncTask extends AsyncTask<Void, Void, Void> {
             configBuilder.setHost(mUser.getHostUrl());
             configBuilder.setSendPresence(true);
             configBuilder.setPort(XMMPService.DEFAULT_XMPP_PORT);
-            configBuilder.setDebuggerEnabled(true);
+
             mConnection = new XMPPTCPConnection(configBuilder.build());
             // Connect to the server
             if (!mConnection.isConnected()) {
                 Log.d(DEBUG_TAG, "starting connection");
-                mConnection.setPacketReplyTimeout(30000000);
-                mConnection.addConnectionListener(mConnectionListener);
-                mConnection.connect();
+                try {
+                    mConnection.setPacketReplyTimeout(30000000);
+                    mConnection.addConnectionListener(mConnectionListener);
+                    mConnection.connect();
+                } catch (SmackException | IOException | XMPPException e) {
+                    String error = "Failed to connect!!\n Internet Connection error";
+                    e.printStackTrace();
+                    Log.d(DEBUG_TAG, e.getMessage());
+                    mConnectionListener.connectionClosedOnError(e);
+                }
             }
             // provide established connection to server
             //     Log.d(DEBUG_TAG, "connection is "+mConnection.isConnected());
 
-        } catch (SmackException | IOException | XMPPException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Log.d(DEBUG_TAG, e.getMessage());
             mConnectionListener.connectionClosedOnError(e);

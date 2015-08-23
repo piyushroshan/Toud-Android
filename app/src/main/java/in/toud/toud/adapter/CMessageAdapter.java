@@ -1,4 +1,4 @@
-package in.toud.toud.chat;
+package in.toud.toud.adapter;
 
 import java.util.ArrayList;
 
@@ -13,6 +13,7 @@ import android.widget.LinearLayout.LayoutParams;
 import android.widget.TextView;
 
 import in.toud.toud.R;
+import in.toud.toud.chat.CMessage;
 
 /**
  * Created by rpiyush on 23/8/15.
@@ -36,7 +37,9 @@ public class CMessageAdapter extends BaseAdapter{
     public Object getItem(int position) {
         return mMessages.get(position);
     }
+
     @Override
+    @SuppressWarnings("ResourceAsColor")
     public View getView(int position, View convertView, ViewGroup parent) {
         CMessage message = (CMessage) this.getItem(position);
 

@@ -15,6 +15,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.ImageView;
 
+import in.toud.toud.chat.CMessage;
 import in.toud.toud.model.User;
 import in.toud.toud.AppController;
 import in.toud.toud.R;
@@ -34,6 +35,7 @@ import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.chat.Chat;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smackx.chatstates.ChatState;
 import org.jivesoftware.smackx.vcardtemp.VCardManager;
 import org.jivesoftware.smackx.vcardtemp.packet.VCard;
 
@@ -125,10 +127,25 @@ public class XMMPService extends Service implements ConnectionListener {
         mSendMessageAsyncTask.execute(id, null, message, 0);
 
     }
+
+    public void sendMessagesPending() {
+        SendMessagesPendingAsyncTask mSendMessagesPendingAsyncTask = new SendMessagesPendingAsyncTask();
+        mSendMessagesPendingAsyncTask.execute();
+    }
+
     public void sendMessageToChat(String jid, String message) {
 
         SendMessageAsyncTask mSendMessageAsyncTask = new SendMessageAsyncTask();
         mSendMessageAsyncTask.execute(0, jid, message, 1);
+
+    }
+
+    public void sendStateToChat(String jid, ChatState state) {
+
+        SendChatStateAsyncTask mSendChatStateAsyncTask = new SendChatStateAsyncTask();
+        Log.d(DEBUG_TAG, jid + "SATETASK  : " + state.toString());
+        mSendChatStateAsyncTask.execute(jid, state);
+        //mChatHolderListener.sendChatStateMessage(jid, state);
 
     }
 
@@ -295,6 +312,9 @@ public class XMMPService extends Service implements ConnectionListener {
          * @return
          */
         protected String doInBackground(Object... objects) {
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
             int cid = (int) objects[0];
             String jid = (String) objects[1];
             String message = (String) objects[2];
@@ -313,6 +333,9 @@ public class XMMPService extends Service implements ConnectionListener {
         }
 
         private String sendMessageToSingleChat(int cid, String message) {
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
             boolean isSuccess;
             String jid = mChatHolderListener.getJid(cid);
             String defaultChatTread = getDefaultTread();
@@ -323,31 +346,39 @@ public class XMMPService extends Service implements ConnectionListener {
             if (isSuccess) {
                 resultMessage = "Message: " + message + " send to" + jid;
             }
-            boolean isViewed = true;
+            boolean isViewed = false;
             Realm realm = Realm.getInstance(AppController.getAppContext());
             RealmQuery query = realm.where(User.class);
             RealmObject userRealmObject = query.findFirst();
             User myself = (User) userRealmObject;
-            ChatHolderListener.saveToHistory(jid, myself.getUsername(), message, isSuccess, isViewed);
+            String[] msg = message.split("#", 2);
+            ChatHolderListener.saveToHistory(jid, myself.getUsername(), msg[0], msg[1], isSuccess, isViewed);
             return resultMessage;
         }
 
         private String sendMessageToSingleChat(String to, String message) {
-            boolean isSuccess;
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
+            boolean isSuccess = false;
             String defaultChatTread = getDefaultTread();
-            int cid = mChatHolderListener.getChatId(to, defaultChatTread);
-
-            isSuccess = mChatHolderListener.sendMessage(to, message);
+            try {
+                int cid = mChatHolderListener.getChatId(to, defaultChatTread);
+                isSuccess = mChatHolderListener.sendMessage(to, message);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             String resultMessage = "something goes wrong!";
             if (isSuccess) {
                 resultMessage = "Message: " + message + " send to" + to;
             }
-            boolean isViewed = true;
+            boolean isViewed = false;
             Realm realm = Realm.getInstance(AppController.getAppContext());
             RealmQuery query = realm.where(User.class);
             RealmObject userRealmObject = query.findFirst();
             User myself = (User) userRealmObject;
-            ChatHolderListener.saveToHistory(to, myself.getUsername(), message, isSuccess, isViewed);
+            String[] msg = message.split("#", 2);
+            ChatHolderListener.saveToHistory(to, myself.getUsername(), msg[0], msg[1], isSuccess, isViewed);
             return resultMessage;
         }
 
@@ -366,7 +397,7 @@ public class XMMPService extends Service implements ConnectionListener {
         }*/
 
         protected void onPostExecute(String result) {
-            Log.d(DEBUG_TAG, " onPostExecute " + result);
+            Log.d(DEBUG_TAG, " onPostExecute Chat " + result);
         }
 
 
@@ -404,4 +435,86 @@ public class XMMPService extends Service implements ConnectionListener {
         }
 
     }*/
+
+    private class SendChatStateAsyncTask extends AsyncTask<Object, Integer, String> {
+        /**
+         * @param objects
+         * @return
+         */
+        protected String doInBackground(Object... objects) {
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
+            Boolean isSuccess = true;
+            String jid = (String) objects[0];
+            ChatState state = (ChatState) objects[1];
+            String result = "ChatState something wrong";
+            Log.d(DEBUG_TAG, " doInBackground with SendChatStateAsyncTask User: " + jid + " State: " + state.toString() + " ");
+            if (jid != null && state != null) {
+                if (mChatHolderListener != null) {
+                    mChatHolderListener.sendChatStateMessage(jid, state);
+                    result = "User: " + jid + " State: " + state.toString();
+                }
+            }
+            return result;
+        }
+
+        protected void onPostExecute(String result) {
+            Log.d(DEBUG_TAG, " onPostExecute State " + result);
+        }
+    }
+
+    private class SendMessagesPendingAsyncTask extends AsyncTask<Object, Integer, String> {
+        /**
+         * @param objects
+         * @return
+         */
+        protected String doInBackground(Object... objects) {
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
+            String result = sendMessagePending();
+            return result;
+        }
+
+        protected void onPostExecute(String result) {
+            Log.d(DEBUG_TAG, " onPostExecute State " + result);
+        }
+
+        private String sendMessagePending() {
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
+            String defaultChatTread = getDefaultTread();
+            String resultMessage = "Unknown";
+            Realm realm = Realm.getInstance(AppController.getAppContext());
+            RealmResults<in.toud.toud.model.Message> msgRealmResults = realm.where(in.toud.toud.model.Message.class)
+                    .equalTo("isSent", false).findAllSorted("time");
+            for (int i = 0; i < msgRealmResults.size(); i++) {
+                boolean isSuccess = false;
+                in.toud.toud.model.Message msg = (in.toud.toud.model.Message) msgRealmResults.get(i);
+                try {
+                    int cid = mChatHolderListener.getChatId(msg.getTo(), defaultChatTread);
+                    isSuccess = mChatHolderListener.sendMessage(msg.getTo(), msg.getChatCloudTag() + msg.getMessage());
+                    resultMessage = "something goes wrong!";
+                    if (isSuccess) {
+                        resultMessage = "Message: " + msg.getChatCloudTag() + msg.getMessage() + " send to" + msg.getTo();
+                    }
+                    msg.setIsSent(isSuccess);
+                    realm.beginTransaction();
+                    realm.copyToRealmOrUpdate(msg);
+                    realm.commitTransaction();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    resultMessage = e.toString();
+                }
+            }
+            return resultMessage;
+        }
+
+        private String getDefaultTread() {
+            return AppController.getAppContext().getResources().getString(R.string.new_chat);
+        }
+    }
+
 }

@@ -18,7 +18,7 @@ public class User extends RealmObject {
     private String status;
     private boolean isAvailable;
     @Ignore
-    private final String hostUrl = "192.168.1.6";
+    private final String hostUrl = "52.90.175.123";
 
 
     public String getUsername() {

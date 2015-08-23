@@ -1,16 +1,29 @@
 package in.toud.toud.chat;
 
-import java.util.ArrayList;
-import java.util.Random;
-
-import android.app.ListActivity;
+import android.app.Activity;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 
+import org.jivesoftware.smackx.chatstates.ChatState;
+
+import java.util.Random;
+
+import butterknife.ButterKnife;
+import de.halfbit.tinybus.TinyBus;
 import in.toud.toud.AppController;
 import in.toud.toud.R;
 import in.toud.toud.events.MessageRecievedEvent;
+import in.toud.toud.fragment.ChatCloudFragment;
+import in.toud.toud.fragment.ChatFragment;
+import in.toud.toud.model.ChatCloud;
 import in.toud.toud.model.User;
 import in.toud.toud.service.XMMPService;
 import io.realm.Realm;
@@ -18,102 +31,114 @@ import io.realm.RealmObject;
 import io.realm.RealmQuery;
 
 /**
- * Created by rpiyush on 23/8/15.
+ * Created by rpiyush on 8/12/15.
  */
-public class ChatActivity extends ListActivity {
+public class ChatActivity extends FragmentActivity
+        implements ChatCloudFragment.OnChatCloudSelectedListener, ChatFragment.OnChatMessageInteractionListener {
 
-    ArrayList<CMessage> messages;
-    CMessageAdapter adapter;
-    EditText text;
-    static Random rand = new Random();
-    static String sender;
     XMMPService service;
+    private TinyBus mBus;
+    static Random rand = new Random();
+    ChatFragment chatFragment;
+    ChatCloudFragment chatCloudFragment;
+    EditText chat_text;
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.chat_messages);
-/*        RealmConfiguration realmConfig = new RealmConfiguration.Builder(this).build();
-        Realm.deleteRealm(realmConfig);
-        realm = Realm.getInstance(AppController.getAppContext());
-        realm.beginTransaction();
-        realm.commitTransaction();*/
-        // Add a person
+        setContentView(R.layout.activity_chat);
+        chat_text = (EditText) this.findViewById(R.id.chat_text);
+        /*FragmentManager fm = getSupportFragmentManager();
+        chatFragment = (ChatFragment) fm.findFragmentById(R.id.fragment_chat_messages_container);
+        chatCloudFragment = (ChatCloudFragment) fm.findFragmentById(R.id.fragment_chat_cloud_container);
+        chatCloudFragment.setArguments(getIntent().getExtras());*/
         Realm realm = Realm.getInstance(AppController.getAppContext());
-
         User yourJID = new User();
-        yourJID.setUsername("roshan");
+        yourJID.setUsername("roshan@52.90.175.123");
         yourJID.setPassword("roshan");
         yourJID.setNickName("Roshan Piyush");
         yourJID.setIsAvailable(true);
-
+        ChatCloud chatCloud = new ChatCloud();
+        chatCloud.setChatCloudTag("SellMe");
+        chatCloud.setLastRecieved(System.currentTimeMillis());
+        chatCloud.setLastSent(System.currentTimeMillis());
         realm.beginTransaction();
         realm.copyToRealmOrUpdate(yourJID);
+        realm.copyToRealmOrUpdate(chatCloud);
         realm.commitTransaction();
-        //mRosterHolderListener.createRoster("toud@192.168.1.6");
+        //mRosterHolderListener.createRoster("toud@52.90.175.123");
         service = new XMMPService();
-        realm = Realm.getInstance(AppController.getAppContext());
         RealmQuery query = realm.where(User.class);
         RealmObject userRealmObject = query.findFirst();
         User myself = (User) userRealmObject;
         service.connect(myself);
-
-        text = (EditText) this.findViewById(R.id.text);
-
-        sender = "toud@192.168.1.6";
-        this.setTitle(sender);
-        messages = new ArrayList<CMessage>();
-
-        messages.add(new CMessage("Hello",sender));
-        messages.add(new CMessage("Hi!", "roshan"));
-        adapter = new CMessageAdapter(this, messages);
-        setListAdapter(adapter);
-        addNewMessage(new CMessage("mmm, well, using 9 patches png to show them.", sender));
     }
 
-    public void sendMessage(View v)
-    {
-        String newMessage = text.getText().toString().trim();
-        if(newMessage.length() > 0)
-        {
-            text.setText("");
-            addNewMessage(new CMessage(newMessage, true));
-            service.sendMessageToChat(sender,newMessage);
-        }
+    @Override
+    public void onStart() {
+        super.onStart();
+        //mBus.register(this);
     }
 
-    //@Subscribe
-    public void getMessageEvent(MessageRecievedEvent event){
-        CMessage message = event.cmessage;
-        //Toast.makeText(this, "Event handled", Toast.LENGTH_SHORT).show();
-        if (message.isStatusMessage()) {
-            if (messages.get(messages.size() - 1).isStatusMessage)//check wether we have already added a status message
-            {
-                messages.get(messages.size() - 1).setMessage(message.getMessage()); //update the status for that
-                adapter.notifyDataSetChanged();
-                getListView().setSelection(messages.size() - 1);
-            } else {
-                addNewMessage(message); //add new message, if there is no existing status message
-            }
+    @Override
+    public void onStop() {
+        //mBus.unregister(this);
+        super.onStop();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    public void onChatCloudSelected(int position) {
+        // The user selected the ChatCloud
+
+        chatCloudFragment = (ChatCloudFragment)
+                getSupportFragmentManager().findFragmentById(R.id.fragment_chat_cloud_container);
+
+        if (chatCloudFragment != null) {
+            // If frag is available, we're in two-pane layout...
+            chatCloudFragment.updateChatCloudView(position);
+            ChatFragment newFragment = new ChatFragment();
+            Bundle args = new Bundle();
+            args.putInt(ChatFragment.ARG_POSITION, position);
+            newFragment.setArguments(args);
+
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            // Replace whatever is in the fragment_container view with this fragment,
+            // and add the transaction to the back stack so the user can navigate back
+            transaction.replace(R.id.fragment_chat_messages_container, newFragment);
+            //transaction.addToBackStack(null);
+            // Commit the transaction
+            transaction.commit();
         } else {
+            // Otherwise, we're in the one-pane layout and must swap frags...
 
-            if (messages.get(messages.size() - 1).isStatusMessage)//check if there is any status message, now remove it.
-            {
-                messages.remove(messages.size() - 1);
-            }
+            // Create fragment and give it an argument for the selected chatcloud
+            ChatFragment newFragment = new ChatFragment();
+            Bundle args = new Bundle();
+            args.putInt(ChatFragment.ARG_POSITION, position);
+            newFragment.setArguments(args);
 
-            addNewMessage(message); // add the orignal message from server.
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            // Replace whatever is in the fragment_container view with this fragment,
+            // and add the transaction to the back stack so the user can navigate back
+            transaction.replace(R.id.fragment_chat_cloud_container, newFragment);
+            transaction.addToBackStack(null);
+            // Commit the transaction
+            transaction.commit();
         }
     }
 
-
-
-
-    void addNewMessage(CMessage m)
-    {
-        messages.add(m);
-        adapter.notifyDataSetChanged();
-        getListView().setSelection(messages.size()-1);
+    @Override
+    public void onChatMessageInteraction(int position) {
+        // The user selected the ChatCloud
     }
-
 }
