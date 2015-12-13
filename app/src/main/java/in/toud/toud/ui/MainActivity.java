@@ -98,7 +98,7 @@ public class MainActivity extends ActionBarActivity implements JIDListFragment.O
         RealmQuery query = realm.where(User.class);
         RealmObject userRealmObject = query.findFirst();
         User myself = (User) userRealmObject;
-        service.connect(myself);
+        service.connect();
     }
 
     public void onFragmentInteraction(Uri uri) {

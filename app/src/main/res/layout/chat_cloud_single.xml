@@ -2,19 +2,25 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:weightSum="1">
 
     <TextView
         android:id="@+id/chat_cloud_tag"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="5sp"
-        android:background="@drawable/bubble_you"
         android:shadowColor="@color/textShadow"
         android:shadowDx="1"
         android:shadowDy="1"
         android:text="Medium Text"
-        android:textColor="@color/textColor"
-        android:textSize="20sp" />
+        android:textColor="#691a1a"
+        android:textSize="20sp"
+        android:layout_weight="1"
+        android:background="#f7ff61"
+        android:textAlignment="center"
+        android:textStyle="bold"
+        android:elegantTextHeight="false"
+        android:gravity="center_vertical|center_horizontal" />
 
 </LinearLayout>

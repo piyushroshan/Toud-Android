@@ -15,7 +15,10 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.ImageView;
 
+import de.halfbit.tinybus.Subscribe;
+import de.halfbit.tinybus.TinyBus;
 import in.toud.toud.chat.CMessage;
+import in.toud.toud.events.SendMessageEvent;
 import in.toud.toud.model.User;
 import in.toud.toud.AppController;
 import in.toud.toud.R;
@@ -71,10 +74,16 @@ public class XMMPService extends Service implements ConnectionListener {
         return mAvatarView;
     }
 
+    private TinyBus mBus;
     public void addRoster(String m) {
         if (mConnection != null) {
             mRosterHolderListener.createRoster(m);
         }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return localBinder;
     }
 
     public class LocalBinder extends Binder {
@@ -96,28 +105,50 @@ public class XMMPService extends Service implements ConnectionListener {
         return authorize;
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        connect();
+        return START_STICKY;
+    }
 
     @Override
     public void onCreate() {
         Log.d(DEBUG_TAG, "Creating XMMPService...");
         super.onCreate();
         Log.i(DEBUG_TAG, "XMPPService created.");
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return localBinder;
+        mBus = TinyBus.from(AppController.getAppContext());
+        mBus.register(this);
     }
 
     @Override
     public void onDestroy() {
         mRosterHolderListener.stopDBTask();
+        mBus.unregister(this);
         super.onDestroy();
     }
 
-    public void connect(User user) {
-        mUser = user;
-        mXMPPTread = new XMPPConnectAsyncTask(mUser, this);
+    @Subscribe(mode = Subscribe.Mode.Background)
+    public void getSendMessageEvent(SendMessageEvent event) {
+        CMessage message = event.message;
+        ChatState chatState = event.chatState;
+        int type = event.type;
+        String buddy = event.buddy;
+        if (type == 0) {
+            sendMessageToChat(buddy, message.getChatCloudTag() + '#' + message.getMessage());
+        } else if (type == 1) {
+            sendStateToChat(buddy, chatState);
+        } else if (type == 2) {
+            sendMessagesPending();
+        }
+    }
+
+    public void connect() {
+        Realm realm = Realm.getInstance(AppController.getAppContext());
+        RealmQuery query = realm.where(User.class);
+        RealmObject userRealmObject = query.findFirst();
+        User myself = (User) userRealmObject;
+        mUser = myself;
+        mXMPPTread = new XMPPConnectAsyncTask(myself, this);
         mXMPPTread.execute();
     }
 
@@ -129,6 +160,8 @@ public class XMMPService extends Service implements ConnectionListener {
     }
 
     public void sendMessagesPending() {
+        if (mConnection == null || !mConnection.isAuthenticated())
+            connect();
         SendMessagesPendingAsyncTask mSendMessagesPendingAsyncTask = new SendMessagesPendingAsyncTask();
         mSendMessagesPendingAsyncTask.execute();
     }
@@ -228,7 +261,7 @@ public class XMMPService extends Service implements ConnectionListener {
 
                     Log.e(DEBUG_TAG, e.getMessage());
                     sendAuthStatusToListeners(false);
-                    connect(mUser);
+                    connect();
                 }
                 return null;
             }
@@ -292,7 +325,7 @@ public class XMMPService extends Service implements ConnectionListener {
 
                     Log.e(DEBUG_TAG, e.getMessage());
                     sendAuthStatusToListeners(false);
-                    connect(mUser);
+                    connect();
                 }
                 return null;
             }
@@ -312,9 +345,6 @@ public class XMMPService extends Service implements ConnectionListener {
          * @return
          */
         protected String doInBackground(Object... objects) {
-            if (mConnection == null || !mConnection.isAuthenticated()) {
-                return "Not Connected";
-            }
             int cid = (int) objects[0];
             String jid = (String) objects[1];
             String message = (String) objects[2];
@@ -328,7 +358,9 @@ public class XMMPService extends Service implements ConnectionListener {
             }else if(option == 1){
                 resultMessage = sendMessageToSingleChat(jid, message);
             }
-
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                return "Not Connected";
+            }
             return resultMessage;
         }
 
@@ -357,11 +389,18 @@ public class XMMPService extends Service implements ConnectionListener {
         }
 
         private String sendMessageToSingleChat(String to, String message) {
-            if (mConnection == null || !mConnection.isAuthenticated()) {
-                return "Not Connected";
-            }
             boolean isSuccess = false;
             String defaultChatTread = getDefaultTread();
+            boolean isViewed = false;
+            Realm realm = Realm.getInstance(AppController.getAppContext());
+            RealmQuery query = realm.where(User.class);
+            RealmObject userRealmObject = query.findFirst();
+            User myself = (User) userRealmObject;
+            String[] msg = message.split("#", 2);
+            if (mConnection == null || !mConnection.isAuthenticated()) {
+                ChatHolderListener.saveToHistory(to, myself.getUsername(), msg[0], msg[1], isSuccess, isViewed);
+                return "Not Connected";
+            }
             try {
                 int cid = mChatHolderListener.getChatId(to, defaultChatTread);
                 isSuccess = mChatHolderListener.sendMessage(to, message);
@@ -372,12 +411,6 @@ public class XMMPService extends Service implements ConnectionListener {
             if (isSuccess) {
                 resultMessage = "Message: " + message + " send to" + to;
             }
-            boolean isViewed = false;
-            Realm realm = Realm.getInstance(AppController.getAppContext());
-            RealmQuery query = realm.where(User.class);
-            RealmObject userRealmObject = query.findFirst();
-            User myself = (User) userRealmObject;
-            String[] msg = message.split("#", 2);
             ChatHolderListener.saveToHistory(to, myself.getUsername(), msg[0], msg[1], isSuccess, isViewed);
             return resultMessage;
         }

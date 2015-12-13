@@ -12,19 +12,19 @@
         android:id="@+id/chatCloudText"
         android:layout_gravity="center_horizontal" />
 
-    <fragment
-        class="in.toud.toud.fragment.ChatCloudFragment"
+    <LinearLayout
         android:id="@+id/fragment_chat_cloud_container"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent" />
+        android:layout_height="fill_parent">
 
-    <fragment
-        class="in.toud.toud.fragment.ChatFragment"
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/fragment_chat_messages_container"
-        android:layout_height="fill_parent"
-        android:layout_width="match_parent" />
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
 
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        <LinearLayout
         android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content">
@@ -78,5 +78,6 @@
                 android:layout_weight="4" />
 
         </RelativeLayout>
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

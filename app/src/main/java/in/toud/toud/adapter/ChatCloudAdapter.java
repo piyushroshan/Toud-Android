@@ -1,11 +1,11 @@
 package in.toud.toud.adapter;
 
 import android.content.Context;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.BaseAdapter;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -14,57 +14,62 @@ import in.toud.toud.R;
 import in.toud.toud.chat.ChatCloudM;
 
 /**
- * Created by rpiyush on 8/12/15.
+ * Created by rpiyush on 23/8/15.
  */
-public class ChatCloudAdapter extends BaseAdapter {
+public class ChatCloudAdapter extends RecyclerView.Adapter<ChatCloudAdapter.ViewHolder> {
     private Context mContext;
-    private ArrayList<ChatCloudM> chatClouds;
-
+    private ArrayList<ChatCloudM> mChatClouds;
 
     public ChatCloudAdapter(Context context, ArrayList<ChatCloudM> chatClouds) {
         super();
         this.mContext = context;
-        this.chatClouds = chatClouds;
+        this.mChatClouds = chatClouds;
+    }
+    @Override
+    public int getItemCount() {
+        return mChatClouds.size();
     }
 
-    @Override
-    public int getCount() {
-        return chatClouds.size();
-    }
-
-    @Override
     public Object getItem(int position) {
-        return chatClouds.get(position);
+        return mChatClouds.get(position);
     }
 
     @Override
-    @SuppressWarnings("ResourceAsColor")
-    public View getView(int position, View convertView, ViewGroup parent) {
-        ChatCloudM chatCloud = (ChatCloudM) this.getItem(position);
+    public ChatCloudAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.chat_cloud_single, parent, false);
+        // set the view's size, margins, paddings and layout parameters
+        ViewHolder holder = new ViewHolder(v);
+        return holder;
+    }
 
-        ViewHolder holder;
-        if (convertView == null) {
-            holder = new ViewHolder();
-            convertView = LayoutInflater.from(mContext).inflate(R.layout.chat_cloud_single, parent, false);
-            holder.chatCloudTag = (TextView) convertView.findViewById(R.id.chat_cloud_tag);
-            convertView.setTag(holder);
-        } else
-            holder = (ViewHolder) convertView.getTag();
-
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        // - get element from your dataset at this position
+        // - replace the contents of the view with that element
+        ChatCloudM chatCloud = mChatClouds.get(position);
+        holder.chatCloudTag.setText(chatCloud.getChatCloudTag());
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) holder.chatCloudTag.getLayoutParams();
+        //check the chatCloud position
         holder.chatCloudTag.setText(chatCloud.getChatCloudTag());
 
         //check if it is a status chatCloudTag then remove background, and change text color.
         if (position % 2 == 0) {
             //holder.chatCloudTag.setBackgroundResource(null);
+            holder.chatCloudTag.setTextColor(R.color.blue);
         } else {
             //holder.chatCloudTag.setBackgroundResource(null);
             holder.chatCloudTag.setTextColor(R.color.textColor);
         }
-        return convertView;
+
     }
 
-    private static class ViewHolder {
-        TextView chatCloudTag;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public TextView chatCloudTag;
+
+        public ViewHolder(View v) {
+            super(v);
+            chatCloudTag = (TextView) v.findViewById(R.id.chat_cloud_tag);
+        }
     }
 
     @Override
@@ -72,4 +77,5 @@ public class ChatCloudAdapter extends BaseAdapter {
         //Unimplemented, because we aren't using Sqlite.
         return position;
     }
+
 }

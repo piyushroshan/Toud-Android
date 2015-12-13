@@ -95,15 +95,22 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
                 String[] mMessage = message.getBody().split("#", 2);
                 playRingtone();
                 cMessage = new CMessage(mMessage[0], mMessage[1], jid);
-                ChatCloud chatCloud = new ChatCloud();
-                chatCloud.setChatCloudTag(mMessage[0]);
-                chatCloud.setSupport(jid);
-                if (realm.where(ChatCloud.class).equalTo("chatCloudTag", mMessage[0]).findFirst() == null) {
-                    TinyBus.from(AppController.getAppContext()).post(new ChatCloudRecievedEvent(new ChatCloudM(mMessage[0])));
-                    realm.beginTransaction();
-                    realm.copyToRealmOrUpdate(chatCloud);
-                    realm.commitTransaction();
+                ChatCloud chatCloud = realm.where(ChatCloud.class).equalTo("chatCloudTag", mMessage[0]).findFirst();
+                Boolean notify = false;
+                if (chatCloud == null) {
+                    chatCloud = new ChatCloud();
+                    chatCloud.setCreatedOn(System.currentTimeMillis());
+                    chatCloud.setChatCloudTag(mMessage[0]);
+                    notify = true;
                 }
+                realm.beginTransaction();
+                chatCloud.setLastRecieved(System.currentTimeMillis());
+                chatCloud.setSupport(jid);
+                realm.copyToRealmOrUpdate(chatCloud);
+                realm.commitTransaction();
+                if (notify)
+                    TinyBus.from(AppController.getAppContext()).post(new ChatCloudRecievedEvent(new ChatCloudM(chatCloud.getChatCloudTag())));
+                saveToHistory(myself.getUsername(), jid, mMessage[0], mMessage[1], true, false);
             } else {
                 String msg;
                 ChatStateExtension chatStateExtension = (ChatStateExtension) message.getExtension("http://jabber.org/protocol/chatstates");
@@ -309,16 +316,16 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         msg.setIsRead(isViewed);
         msg.setIsSent(isSuccess);
         msg.setTime(System.currentTimeMillis());
+        msg.setChatCloudTag(chatCloudTag);
         RealmResults<in.toud.toud.model.Message> myclassRealmResults = realm.where(in.toud.toud.model.Message.class).findAllSorted("id", false);
         RealmResults<ChatCloud> chatCloudRealmResults = realm.where(ChatCloud.class).equalTo("chatCloudTag", chatCloudTag).findAll();
+        realm.beginTransaction();
         if (chatCloudRealmResults.size() > 0) {
             chatCloud = chatCloudRealmResults.first();
-        } else {
-            chatCloud = new ChatCloud();
-            chatCloud.setChatCloudTag(chatCloudTag);
+            chatCloud.setLastSent(System.currentTimeMillis());
+            chatCloud.setLastRecieved(System.currentTimeMillis());
+            realm.copyToRealmOrUpdate(chatCloud);
         }
-        realm.beginTransaction();
-        chatCloud.setLastSent(System.currentTimeMillis());
         if (myclassRealmResults.size() > 0){
           nextKey = myclassRealmResults.first().getId() + 1;
         }else{
@@ -326,7 +333,6 @@ public class ChatHolderListener implements ChatManagerListener, ChatMessageListe
         }
         msg.setId(nextKey);
         realm.copyToRealmOrUpdate(msg);
-        realm.copyToRealmOrUpdate(chatCloud);
         realm.commitTransaction();
     }
 

@@ -17,6 +17,7 @@ public class ChatCloud extends RealmObject {
     private String chatCloudTag;
     private long lastSent;
     private long lastRecieved;
+    private long createdOn;
     private String support;
 
     public String getChatCloudTag() {
@@ -25,6 +26,14 @@ public class ChatCloud extends RealmObject {
 
     public void setChatCloudTag(String chatCloudTag) {
         this.chatCloudTag = chatCloudTag;
+    }
+
+    public void setCreatedOn(long createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public long getCreatedOn() {
+        return this.createdOn;
     }
 
     public long getLastSent() {

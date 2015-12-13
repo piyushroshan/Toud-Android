@@ -78,7 +78,7 @@ public class XMPPConnectAsyncTask extends AsyncTask<Void, Void, Void> {
             RealmObject userRealmObject = query.findFirst();
             User mUser = (User) userRealmObject;
 
-            configBuilder.setUsernameAndPassword(mUser.getUsername(), mUser.getPassword());
+            configBuilder.setUsernameAndPassword(mUser.getUsername().split("@")[0], mUser.getPassword());
             configBuilder.setServiceName(mUser.getHostUrl());
             configBuilder.setResource("mobile");
             configBuilder.setHost(mUser.getHostUrl());

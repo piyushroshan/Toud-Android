@@ -16,10 +16,6 @@ import io.realm.RealmChangeListener;
 import io.realm.RealmObject;
 import io.realm.RealmResults;
 
-/**
- * Created by rpiyush on 15/8/15.
- */
-
 public abstract class RealmRecyclerViewAdapter<T extends RealmObject, VH extends RecyclerView.ViewHolder>
         extends RecyclerView.Adapter<VH> {
     protected LayoutInflater inflater;

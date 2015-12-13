@@ -6,44 +6,41 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.ListFragment;
 import android.support.v7.internal.widget.AdapterViewCompat;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.GridView;
-import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.jivesoftware.smackx.chatstates.ChatState;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
 import de.halfbit.tinybus.Subscribe;
 import de.halfbit.tinybus.TinyBus;
 import in.toud.toud.AppController;
 import in.toud.toud.R;
+import in.toud.toud.adapter.CMessageAdapter;
 import in.toud.toud.adapter.ChatCloudAdapter;
-import in.toud.toud.adapter.SimpleStringRecyclerViewAdapter;
 import in.toud.toud.chat.CMessage;
 import in.toud.toud.chat.ChatCloudM;
 import in.toud.toud.events.ChatCloudRecievedEvent;
-import in.toud.toud.events.MessageRecievedEvent;
+import in.toud.toud.listener.RecycleItemClickListener;
 import in.toud.toud.model.ChatCloud;
-import in.toud.toud.model.Message;
-import in.toud.toud.other.Cheeses;
 import io.realm.Realm;
 import io.realm.RealmResults;
 
 /**
  * Created by rpiyush on 8/12/15.
  */
-public class ChatCloudFragment extends Fragment implements AdapterView.OnItemClickListener {
+public class ChatCloudFragment extends Fragment {
 
     private static final String DEBUG_TAG = "ChatCloudFragment";
     final static String ARG_POSITION = "position";
@@ -52,7 +49,9 @@ public class ChatCloudFragment extends Fragment implements AdapterView.OnItemCli
     Activity activity;
     private OnChatCloudSelectedListener mListener;
     private TinyBus mBus;
-    ChatCloudAdapter adapter;
+    private RecyclerView mRecycleView;
+    private RecyclerView.Adapter<ChatCloudAdapter.ViewHolder> adapter;
+    private RecyclerView.LayoutManager mLayoutManager;
 
     public ChatCloudFragment() {
         super();
@@ -77,10 +76,17 @@ public class ChatCloudFragment extends Fragment implements AdapterView.OnItemCli
         }
     }
 
-    @Subscribe
+    @Subscribe(mode = Subscribe.Mode.Background)
     public void getMessageEvent(ChatCloudRecievedEvent event) {
         ChatCloudM chatCloudM = event.chatCloud;
-
+        chatClouds.add(chatCloudM);
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                adapter.notifyDataSetChanged();
+            }
+        });
+        Log.d(getActivity().getClass().getSimpleName(), chatCloudM.getChatCloudTag() + "Hulalalalala");
     }
 
     @Override
@@ -93,6 +99,8 @@ public class ChatCloudFragment extends Fragment implements AdapterView.OnItemCli
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mBus = TinyBus.from(AppController.getAppContext());
+        chatClouds = new ArrayList<ChatCloudM>();
+        adapter = new ChatCloudAdapter(AppController.getAppContext(), chatClouds);
     }
 
     @Override
@@ -101,36 +109,44 @@ public class ChatCloudFragment extends Fragment implements AdapterView.OnItemCli
             mCurrentPosition = savedInstanceState.getInt(ARG_POSITION);
         }
         View view = inflater.inflate(R.layout.fragment_chat_cloud, container, false);
-        GridView gridView = (GridView) view.findViewById(R.id.gridview);
+        mRecycleView = (RecyclerView) view.findViewById(R.id.recycle_chat_cloud_view);
         chatClouds = new ArrayList<ChatCloudM>();
         adapter = new ChatCloudAdapter(AppController.getAppContext(), chatClouds);
-        gridView.setAdapter(adapter);
+        mRecycleView.setAdapter(adapter);
+        mLayoutManager = new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL);
+        mRecycleView.setLayoutManager(mLayoutManager);
+        mRecycleView.setItemAnimator(new DefaultItemAnimator());
+        mRecycleView.addOnItemTouchListener(
+                new RecycleItemClickListener(AppController.getAppContext(), new RecycleItemClickListener.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(View view, int position) {
+                        // do whatever
+                        Log.d(getActivity().getClass().getSimpleName(), Integer.toString(position) + "   Hulalalalala");
+                        mListener.onChatCloudSelected(position);
+                    }
+                })
+        );
         return view;
     }
 
-    @Override
-    public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
+    /*@Override
+    public void onItemClick(AdapterView<?> parent, View view, int position) {
         // Send the event to the host activity
+        Log.d(getActivity().getClass().getSimpleName(), Integer.toString(position)+"   Hulalalalala");
         mListener.onChatCloudSelected(position);
-    }
+    }*/
 
     private void reloadChatCloud() {
         chatClouds.clear();
         Realm realm = Realm.getInstance(AppController.getAppContext());
         RealmResults<ChatCloud> chatCloudRealmResults = realm.where(in.toud.toud.model.ChatCloud.class)
-                .findAllSorted("chatCloudTag");
+                .findAllSorted("createdOn");
         for (int i = 0; i < chatCloudRealmResults.size(); i++) {
             in.toud.toud.model.ChatCloud chatCloud = chatCloudRealmResults.get(i);
             chatClouds.add(new ChatCloudM(chatCloud.getChatCloudTag()));
         }
         //Log.d(DEBUG_TAG);
         adapter.notifyDataSetChanged();
-    }
-
-    public void updateChatCloudView(int position) {
-        TextView chatCloudText = (TextView) getActivity().findViewById(R.id.chatCloudText);
-        chatCloudText.setText(chatClouds.get(position).getChatCloudTag());
-        mCurrentPosition = position;
     }
 
     /**
@@ -157,7 +173,7 @@ public class ChatCloudFragment extends Fragment implements AdapterView.OnItemCli
     @Override
     public void onStart() {
         super.onStart();
-
+        mBus.register(this);
         // During startup, check if there are arguments passed to the fragment.
         // onStart is a good place to do this because the layout has already been
         // applied to the fragment at this point so we can safely call the method
@@ -165,10 +181,8 @@ public class ChatCloudFragment extends Fragment implements AdapterView.OnItemCli
         Bundle args = getArguments();
         if (args != null) {
             // Set article based on argument passed in
-            updateChatCloudView(args.getInt(ARG_POSITION));
         } else if (mCurrentPosition != -1) {
             // Set article based on saved instance state defined during onCreateView
-            updateChatCloudView(mCurrentPosition);
         }
     }
 
